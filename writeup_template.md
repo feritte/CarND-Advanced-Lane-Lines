@@ -15,8 +15,8 @@ The goals / steps of this project are the following:
 
 [image1]: ./examples/undistorted.png "Undistorted"
 [image2]: ./test_images/test1.jpg "Road Transformed"
-[image3]: ./examples/binary_combo_example.jpg "Binary Example"
-[image4]: ./examples/warped_straight_lines.jpg "Warp Example"
+[image3]: ./examples/ResultofThresholding.png "Binary Example"
+[image4]: ./examples/ResultofWrapped.png "Warp Example"
 [image5]: ./examples/color_fit_lines.jpg "Fit Visual"
 [image6]: ./examples/example_output.jpg "Output"
 [image7]: ./examples/codeUndist.PNG "Code for undistortion"
@@ -62,35 +62,74 @@ I used a combination of color and gradient thresholds to generate a binary image
 
 ![alt text][image8]
 
-Here's an example of my output for this step.  (note: this is not actually from one of the test images)
+Here's an example of my output for this step.
 
 ![alt text][image3]
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
-The code for my perspective transform includes a function called `warper()`, which appears in lines 1 through 8 in the file `example.py` (output_images/examples/example.py) (or, for example, in the 3rd code cell of the IPython notebook).  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
+The code for my perspective transform includes a function called `apply_birds_eye(()`, which appears in the file `p4solution.ipynb`.  The `apply_birds_eye(()` function takes as inputs an image (`img`).
 
 ```python
-src = np.float32(
-    [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-    [((img_size[0] / 6) - 10), img_size[1]],
-    [(img_size[0] * 5 / 6) + 60, img_size[1]],
-    [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-dst = np.float32(
-    [[(img_size[0] / 4), 0],
-    [(img_size[0] / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), 0]])
+def apply_birds_eye(img, should_display=True):
+    img_shape = (img.shape[1], img.shape[0])
+    
+    src = np.float32(SRC_PTS)
+    dst = np.float32(DST_PTS)
+    
+    M = cv2.getPerspectiveTransform(src, dst)
+    Minv = cv2.getPerspectiveTransform(dst, src)
+    warped = cv2.warpPerspective(img, M, img_shape)
+    
+    if should_display is True:
+        f, (ax1, ax2) = plt.subplots(1, 2, figsize=(9, 6))
+        f.tight_layout()
+        ax1.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        ax1.set_title('Undistorted Image', fontsize=20)
+        ax2.imshow(cv2.cvtColor(warped, cv2.COLOR_BGR2RGB))
+        ax2.set_title('Warped Image', fontsize=20)
+        plt.subplots_adjust(left=0., right=1, top=0.9, bottom=0.)
+    return warped, M, Minv
+    ```
+    
+Source (`src`) and destination (`dst`) points are given seperately.  I chose the hardcode the source and destination points in the following manner:
+
+```python
+SRC_PTS = [[490, 460],[810, 460],[1250, 720], [40, 720]]
+tl = SRC_PTS[0]
+tr = SRC_PTS[1]
+br = SRC_PTS[2]
+bl = SRC_PTS[3]
+# compute the width of the new image, which will be the
+# maximum distance between bottom-right and bottom-left
+# x-coordiates or the top-right and top-left x-coordinates
+widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
+widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
+maxWidth = max(int(widthA), int(widthB))
+ 
+# compute the height of the new image, which will be the
+# maximum distance between the top-right and bottom-right
+# y-coordinates or the top-left and bottom-left y-coordinates
+heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
+heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
+maxHeight = max(int(heightA), int(heightB))
+print(maxWidth)
+print(maxHeight)
+DST_PTS_test = np.array([
+[0, 0],
+[maxWidth - 1, 0],
+[maxWidth - 1, maxHeight - 1],
+[0, maxHeight - 1]], dtype = "float32")
 ```
 
 This resulted in the following source and destination points:
 
 | Source        | Destination   | 
 |:-------------:|:-------------:| 
-| 585, 460      | 320, 0        | 
-| 203, 720      | 320, 720      |
-| 1127, 720     | 960, 720      |
-| 695, 460      | 960, 0        |
+| 490, 482      | 0, 0        | 
+| 810, 482      | 1280, 0      |
+| 1250, 720     | 1250, 720      |
+|  40, 720      | 40, 720        |
 
 I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
 
