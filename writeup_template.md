@@ -17,8 +17,8 @@ The goals / steps of this project are the following:
 [image2]: ./test_images/test1.jpg "Road Transformed"
 [image3]: ./examples/ResultofThresholding.png "Binary Example"
 [image4]: ./examples/ResultofWrapped.png "Warp Example"
-[image5]: ./examples/color_fit_lines.jpg "Fit Visual"
-[image6]: ./examples/example_output.jpg "Output"
+[image5]: ./examples/PolyNomFit.png "Fit Visual"
+[image6]: ./examples/LaneProjected.png "Output"
 [image7]: ./examples/codeUndist.PNG "Code for undistortion"
 [image8]: ./examples/codeThreshold.PNG "Code for thresholding"
 [video1]: ./project_video.mp4 "Video"
@@ -95,7 +95,7 @@ def apply_birds_eye(img, should_display=True):
 Source (`src`) and destination (`dst`) points are given seperately.  I chose the hardcode the source and destination points in the following manner:
 
 ```python
-SRC_PTS = [[490, 460],[810, 460],[1250, 720], [40, 720]]
+SRC_PTS = [[490, 482],[810, 482],[1250, 720], [40, 720]]
 tl = SRC_PTS[0]
 tr = SRC_PTS[1]
 br = SRC_PTS[2]
@@ -137,17 +137,86 @@ I verified that my perspective transform was working as expected by drawing the 
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
+where the lane lines stand out clearly. However, you still need to decide explicitly which pixels are part of the lines and which belong to the left line and which belong to the right line.
+
+I first take a histogram along all the columns in the lower half of the image like this:
+```python
+def apply_binary_thresholds(img, thresholds={  \
+      's': {'min': 180, 'max': 255}, \
+      'l': {'min': 255, 'max': 255},   \
+      'b': {'min': 155, 'max': 200}  \
+    } , should_display=True): 
+    
+    S = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)[:,:,2]  
+    L = cv2.cvtColor(img, cv2.COLOR_BGR2LUV)[:,:,0]
+    B = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)[:,:,2] 
+
+    s_bin = np.zeros_like(S)
+    s_bin[(S >= thresholds['s']['min']) & (S <= thresholds['s']['max'])] = 1
+    b_bin = np.zeros_like(B)
+    b_bin[(B >= thresholds['b']['min']) & (B <= thresholds['b']['max'])] = 1
+    l_bin = np.zeros_like(L)
+    l_bin[(L >= thresholds['l']['min']) & (L <= thresholds['l']['max'])] = 1
+    
+    full_bin = np.zeros_like(s_bin)
+    full_bin[(l_bin == 1) | (b_bin == 1) | (s_bin == 1)] = 1
+
+    if should_display is True:
+        f, (ax1, ax2) = plt.subplots(1, 2, figsize=(9, 6))
+        f.tight_layout()
+        ax1.set_title('original image', fontsize=16)
+        ax1.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype('uint8'))
+        ax2.set_title('all thresholds', fontsize=16)
+        ax2.imshow(full_bin, cmap='gray')
+        
+    return full_bin
+```
 
 ![alt text][image5]
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
+* Peaks are identified in a histogram of the image to determine location of lane lines.
+* All non zero pixels around histogram peaks using the numpy function numpy.nonzero() is found.
+* A two degree polynomial to each lane using the numpy function numpy.polyfit() is fitted.
+* The average of the x intercepts from each of the two polynomials position = (rightx_int+leftx_int)/2 is calculated
+* The distance from center by taking the absolute value of the vehicle position minus the halfway point along the horizontal axis distance_from_center = abs(image_width/2 - position) is calculated.
+*  if The horizontal position of the car was greater than image_width/2 than the car was considered to be left of center, otherwise right of center.
+* The distance from center was converted from pixels to meters by multiplying the number of pixels by 3.7/700.
+* The following code is used to calculate the radius of curvature for each lane line in meters:
+```python
+def annotate(img, curvature, pos, curve_min):
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.putText(img, 'curvature radius = %d(m)' % (curvature / 128 * 3.7), (50, 50), font, 1, (255, 255, 255), 2)
+    cv2.putText(img, '%.2fm %s of center' % (np.abs(pos / 12800 * 3.7), "left"), (50, 100), font, 1,
+                (255, 255, 255), 2)
+    cv2.putText(img, 'curvature minimum radius = %d(m)' % (curve_min / 128 * 3.7), (50, 150), font, 1, (255, 255, 255), 2)
 
-I did this in lines # through # in my code in `my_other_file.py`
+def pos_cen(y, left_poly, right_poly):
+    return (1.5 * polynomial_lines(y, left_poly)
+              - polynomial_lines(y, right_poly)) / 2
+
+lc_radius = np.absolute(((1 + (2 * lcs[0] * 500 + lcs[1])**2) ** 1.5) \
+                /(2 * lcs[0]))
+rc_radius = np.absolute(((1 + (2 * rcs[0] * 500 + rcs[1]) ** 2) ** 1.5) \
+                 /(2 * rcs[0]))
+
+ll_img = cv2.add( \
+    cv2.warpPerspective( \
+        painted_b_eye, Minv, (shape[1], shape[0]), flags=cv2.INTER_LINEAR \
+    ), undistorted \
+) 
+plt.imshow(ll_img)
+annotate(ll_img, curvature=(lc_radius + rc_radius) / 2, 
+                     pos=pos_cen(719, lcs, rcs), 
+                     curve_min=min(lc_radius, rc_radius))
+plt.imshow(ll_img)
+
+```
+
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+I implemented this step in lines of my code in the function `annotate()`.  Here is an example of my result on a test image:
 
 ![alt text][image6]
 
