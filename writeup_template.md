@@ -234,10 +234,8 @@ Here's a [link to my video result](./project_output_colour.mp4)
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-he video pipeline developed in this project did a fairly robust job of detecting the lane lines in the test video provided for the project, which shows a road in basically ideal conditions, with fairly distinct lane lines, and on a clear day. It also did a decent job with the challenge video, although it did lose the lane lines momentarily when there was heavy shadow over the road from an overpass.
+The lane detection pipeline is tested on the test video provided for the project. It also did a decent job with the challenge video, although it did lose the lane lines momentarily when there was heavy shadow over the road from an overpass and there was quite a bit of flickering in the highlighting..
 
-I had a little trouble with keeping the highlighted lane area exactly over the lane lines at first. My pipeline may fail in snowy conditions where lane lines are blocked. The edge detection algorithm would not be able to find lines. An improvement could be to look for a general area of where lane lines are most likely to be located, rather than explictly looking for them.
+The challenging part of this problem is to obtain a stable system which performs well  in any situation. The proposed solution is not tested yet on additional video streams with varying lighting and weather conditions, road quality, faded lane lines, and different types of driving like lane shifts, passing, and exiting a highway.
 
-I tried my pipeline for the challenge video. For the most part the lane area was highlighted accurately, but there was quite a bit of flickering in the highlighting.
 
-What I have learned from this project is that it is relatively easy to finetune a software pipeline to work well for consistent road and weather conditions, but what is challenging is finding a single combination which produces the same quality result in any condition. I have not yet tested the pipeline on additional video streams which could challenge the pipeline with varying lighting and weather conditions, road quality, faded lane lines, and different types of driving like lane shifts, passing, and exiting a highway. For further research I plan to record some additional video streams of my own driving in various conditions and continue to refine my pipeline to work in more varied environments.
