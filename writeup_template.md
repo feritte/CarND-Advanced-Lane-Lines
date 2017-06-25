@@ -184,32 +184,24 @@ def apply_binary_thresholds(img, thresholds={  \
 * The distance from center was converted from pixels to meters by multiplying the number of pixels by 3.7/700.
 * The following code is used to calculate the radius of curvature for each lane line in meters:
 ```python
-def annotate(img, curvature, pos, curve_min):
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    cv2.putText(img, 'curvature radius = %d(m)' % (curvature / 128 * 3.7), (50, 50), font, 1, (255, 255, 255), 2)
-    cv2.putText(img, '%.2fm %s of center' % (np.abs(pos / 12800 * 3.7), "left"), (50, 100), font, 1,
-                (255, 255, 255), 2)
-    cv2.putText(img, 'curvature minimum radius = %d(m)' % (curve_min / 128 * 3.7), (50, 150), font, 1, (255, 255, 255), 2)
+# Define conversions in x and y from pixels space to meters
+ym_per_pix = 30/720 # meters per pixel in y dimension
+xm_per_pix = 3.7/700 # meters per pixel in x dimension
 
-def pos_cen(y, left_poly, right_poly):
-    return (1.5 * polynomial_lines(y, left_poly)
-              - polynomial_lines(y, right_poly)) / 2
+# Fit new polynomials to x,y in world space
+left_fit_cr = np.polyfit(ly*ym_per_pix, lx*xm_per_pix, 2)
+right_fit_cr = np.polyfit(ry*ym_per_pix, rx*xm_per_pix, 2)
+# Calculate the new radii of curvature
+#left_curverad = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
+#right_curverad = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
 
-lc_radius = np.absolute(((1 + (2 * lcs[0] * 500 + lcs[1])**2) ** 1.5) \
-                /(2 * lcs[0]))
-rc_radius = np.absolute(((1 + (2 * rcs[0] * 500 + rcs[1]) ** 2) ** 1.5) \
-                 /(2 * rcs[0]))
+left_curverad = ((1 + (2*left_fit_cr[0]*np.max(ly) + left_fit_cr[1])**2)**1.5) \
+                                 /np.absolute(2*left_fit_cr[0])
+right_curverad = ((1 + (2*right_fit_cr[0]*np.max(ly) + right_fit_cr[1])**2)**1.5) \
+                                    /np.absolute(2*right_fit_cr[0])
 
-ll_img = cv2.add( \
-    cv2.warpPerspective( \
-        painted_b_eye, Minv, (shape[1], shape[0]), flags=cv2.INTER_LINEAR \
-    ), undistorted \
-) 
-plt.imshow(ll_img)
-annotate(ll_img, curvature=(lc_radius + rc_radius) / 2, 
-                     pos=pos_cen(719, lcs, rcs), 
-                     curve_min=min(lc_radius, rc_radius))
-plt.imshow(ll_img)
+# Now our radius of curvature is in meters
+print(' left curve radius  ',left_curverad, 'm', ' ,right curve radius ', right_curverad, 'm')
 
 ```
 
@@ -238,4 +230,5 @@ The lane detection pipeline is tested on the test video provided for the project
 
 The challenging part of this problem is to obtain a stable system which performs well  in any situation. The proposed solution is not tested yet on additional video streams with varying lighting and weather conditions, road quality, faded lane lines, and different types of driving like lane shifts, passing, and exiting a highway.
 
+An improvement could be to look for a general area of where lane lines are most likely to be located, rather than explictly looking for them.
 
